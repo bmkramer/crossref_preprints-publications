@@ -32,4 +32,4 @@ data_full_join <- data_full_join %>%
 data_missing <- data_full_join %>%
   filter(is.na(reciprocal))
 
-write.csv(data_missing, "data/data_missing.csv", row.names = FALSE)
+write.csv(data_missing, "results/data_missing.csv", row.names = FALSE)

@@ -111,5 +111,5 @@ preprint_published_full <- preprint_published_full %>%
 
 
 write.csv(preprint_published_full, 
-          "data/preprint_published_full.csv", 
+          "results/preprint_published_full.csv", 
           row.names = FALSE)
