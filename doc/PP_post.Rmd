@@ -1,0 +1,36 @@
+---
+title: "More metadata - how preprints and publications are linked in Crossref"
+author:  "Bianca Kramer"
+date: "March 1, 2020"
+output: html_notebook
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+```{r include=FALSE}
+#install.packages("tidyverse")
+library(tidyverse)
+```
+
+## Linking preprints and published articles
+
+Preprints allow rapid dissemination of research results, early feedback, and potential diversification of how peer review is organized. As such, preprints can be considered part of the 'record of versions' of a publication, that can also include a peer-reviewed version in a journal or other publication venue.  
+
+To be able to access this full 'record of versions', it is important to be able to link preprints to subsequent versions of the work (as well as to other related research output, like code, datasets, peer review reports - however, that is not the subject of this post). Such links can be displayed together with the preprint (Fig 1) 
+
+It can also help move away from the notion of one 'version of record' to a 'record of versions' that allows 
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
