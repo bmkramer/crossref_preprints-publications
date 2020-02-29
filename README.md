@@ -1,2 +1,3 @@
-# crossref_preprints-publications
-Exploring links between preprints and publications in Crossref metadata
+# Crossref: links between preprints and publications
+
+This repo explores existing links between preprints and publications in Crossref metadata
