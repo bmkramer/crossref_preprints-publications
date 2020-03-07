@@ -1,7 +1,7 @@
 ---
 title: "More metadata - how preprints and publications are linked in Crossref"
 author:  "Bianca Kramer"
-date: "March 1, 2020"
+date: "March 9, 2020"
 output: html_notebook
 ---
 ```{r setup, include=FALSE}
@@ -17,20 +17,12 @@ library(tidyverse)
 
 Preprints allow rapid dissemination of research results, early feedback, and potential diversification of how peer review is organized. As such, preprints can be considered part of the 'record of versions' of a publication, that can also include a peer-reviewed version in a journal or other publication venue.  
 
-To be able to access this full 'record of versions', it is important to be able to link preprints to subsequent versions of the work (as well as to other related research output, like code, datasets, peer review reports - however, that is not the subject of this post). Such links can be displayed together with the preprint (Fig 1) 
+To be able to access this full 'record of versions', it is important to be able to link preprints to subsequent versions of the work. Such links can be displayed together with the preprint (Fig 1), which is useful for people who acccess the preprint that way. When these links are also included in the metadata of the preprint (and the published paper), they can be accessed programmatically and (re)used in various ways, e.g. for analysis, to combine citations to the preprint and published version, and to link both versions in discovery systems.
 
-It can also help move away from the notion of one 'version of record' to a 'record of versions' that allows 
+![Fig 1 bioRxiv preprint with link to published paper ](https://github.com/bmkramer/crossref_preprints_publications/raw/master/img/bioRxiv_link.png "Logo Title Text 1")
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+For preprint servers that use [Crossref](https://crossref.org) DOIs, Crossref notifies the preprint server of potential matches with published articles. It requires preprint servers to verify the links and add them to the metadata record of the preprint. 
+(see https://support.crossref.org/hc/en-us/articles/213126346-Posted-content-includes-preprints#assoc). Crossref also recommends, but does not require, publishers to add links to preprints in the metadata of their publications.
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
-```{r}
-plot(cars)
-```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
