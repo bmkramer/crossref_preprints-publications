@@ -162,7 +162,7 @@ p <- plotSankey(links, nodes)
 p
 
 #save plot as html + png
-plotname <- "sankey1"
+plotname <- "sankey_pp"
 file_html <- paste0(plotname, ".html")
 file_png <- paste0("img/", plotname, ".png")
 
