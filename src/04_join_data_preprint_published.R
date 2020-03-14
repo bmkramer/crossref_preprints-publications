@@ -85,30 +85,27 @@ missing_preprints_left <- preprint_published_full %>%
 
 missing_pubs_left <- preprint_published_full %>%
   filter(is.na(`publisher.y`))
-#---------------------------------------------------------------
 
-#make sorting/selecting parameters into factors
+#add columns for DOI-prefixes
 preprint_published_full <- preprint_published_full %>%
-  mutate(
-    `publisher.x` = as_factor(`publisher.x`),
-    `publisher.y` = as_factor(`publisher.y`),
-    `type.x` = as_factor(`type.x`),
-    `type.y` = as_factor(`type.y`),
-    `created_year.x` = as_factor(`created_year.x`),
-    `created_year.y` = as_factor(`created_year.y`),
-    `relation_type.x` = as_factor(`relation_type.x`),
-    `relation_type.y` = as_factor(`relation_type.y`),
-    `asserted_by_object.x` = as_factor(`asserted_by_object.x`),
-    `asserted_by_object.y`= as_factor(`asserted_by_object.y`),
-    `asserted_by_subject.x` = as_factor(`asserted_by_subject.x`),
-    `asserted_by_subject.y` = as_factor(`asserted_by_subject.y`),
-    reciprocal = as_factor(reciprocal))
+  separate(DOI, 
+           into = "DOI_prefix", "/", 
+           remove = FALSE,
+           extra = "drop") %>%
+  separate(relation_DOI, 
+           into = "relation_DOI_prefix", "/", 
+           remove = FALSE,
+           extra = "drop") %>%
+  mutate(DOI_prefix = case_when(
+    grepl("10.", DOI_prefix) ~ DOI_prefix,
+    TRUE ~ NA_character_)) %>%
+  mutate(relation_DOI_prefix = case_when(
+    grepl("10.", relation_DOI_prefix) ~ relation_DOI_prefix,
+    TRUE ~ NA_character_))
 
 #add days b/w preprint and publication (based on DOI created date)
 preprint_published_full <- preprint_published_full %>%
   mutate(diff = `created.y` - `created.x`)
-
-
 
 write.csv(preprint_published_full, 
           "results/preprint_published_full.csv", 

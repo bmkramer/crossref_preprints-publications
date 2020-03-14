@@ -1,13 +1,68 @@
 install.packages("tidyverse")
 library(tidyverse)
 
-preprint_published_full <- read_csv("data/preprint_published_full.csv")
+#read file, all columns as factors unless otherwise specified
+pp1 <- read_csv("results/preprint_published_full.csv",
+                col_types = cols(.default = "f", 
+                                 DOI = "c",
+                                 relation_DOI = "c",
+                                 `created.x` = "D",
+                                 `created.y` = "D",
+                                 diff = "d"))
+
+#initial tallies for reporting
+result <- pp1 %>%
+  group_by(`relation_type.x`) %>%
+  count()
+
+result <- pp1 %>%
+  group_by(`relation_type.y`) %>%
+  count()
+
+result <- pp1 %>%
+  group_by(reciprocal) %>%
+  count()
+
+result <- pp1 %>%
+  filter(!is.na(diff))
+
+
+result <- pp1 %>%
+  filter(is.na(reciprocal)) %>%
+  filter(!is.na(diff)) %>%
+  filter(!is.na(`relation_type.y`))
+
+#analyse prefixes of missing preprints
+result <- pp1 %>%
+  filter(is.na(diff)) %>%
+  filter(is.na(`relation_type.x`)) %>%
+  group_by(`DOI_prefix`) %>%
+  count() %>%
+  arrange(desc(n))
+
+#analyse prefixes of missing publications
+result <- pp1 %>%
+  filter(is.na(diff)) %>%
+  filter(is.na(`relation_type.y`)) %>%
+  group_by(`relation_DOI_prefix`) %>%
+  count() %>%
+  arrange(desc(n))
+
+
+selection <- c("10.17605",
+               "10.5281",
+               "10.13140")
 
 
 
+selection <- c("10.6084")
+
+result <- pp1 %>%
+  filter(relation_DOI_prefix %in% selection)
 
 
 
+#-------------------------------------------------------------
 #set function for basic analysis
 getTally <- function(data){
   
