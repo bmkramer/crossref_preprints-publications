@@ -12,15 +12,6 @@ library(htmlwidgets)
 library(webshot)
 webshot::install_phantomjs()
 
-#read file, all columns as factors unless otherwise specified
-pp1 <- read_csv("results/preprint_published_full.csv",
-                col_types = cols(.default = "f", 
-                                 DOI = "c",
-                                 relation_DOI = "c",
-                                 `created.x` = "D",
-                                 `created.y` = "D",
-                                 diff = "d"))
-
 #define function to create connection data frame
 createLinks <- function(x){
   
@@ -42,6 +33,8 @@ createLinks <- function(x){
       TRUE ~ "pub NA")) %>%
     #keep only source and target
     select(source, target) %>%
+    #remove "preprint NA", "pub NA"
+    filter(source != "preprint NA" & target != "pub NA") %>% #<- comment out to keep them in
     #count occurrences
     group_by(source, target) %>%
     count() %>%
@@ -150,8 +143,8 @@ nodes <- createNodes(links)
 #order nodes 
 target <- c("is_preprint_of",
             "preprint via DOI", 
-            "preprint NA",
-            "pub NA",
+            #"preprint NA", <- include for full image
+            #"pub NA", < include for full image
             "pub via DOI",
             "has_preprint")
 
@@ -165,6 +158,8 @@ nodes <- createNodesOrder(nodes, target)
 #add IDs to links, create plot
 links <- modifyLinks(links, nodes)
 p <- plotSankey(links, nodes)
+
+p
 
 #save plot as html + png
 plotname <- "sankey1"
