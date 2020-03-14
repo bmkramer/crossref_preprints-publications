@@ -20,8 +20,6 @@ createLinks <- function(x){
     select(`relation_type.x`,
            `relation_type.y`,
            diff) %>%
-    #cretae column with record numbers (sequential)
-    #mutate(record = 1:n()) %>%
     #create source and target columns
     mutate(source = case_when(
       !is.na(`relation_type.x`) ~ "is_preprint_of",
