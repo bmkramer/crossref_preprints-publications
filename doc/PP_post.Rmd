@@ -26,7 +26,7 @@ For preprint servers that use [Crossref](https://crossref.org) DOIs, Crossref no
 
 So how many preprints actually have links to the published version in their metadata? And vice versa? Are there preprint servers (and publishers) that are particularly good in adding these links? 
 
-To investigate this, I queried the Crossref API for all records that include the field 'is-preprint-of', as well as all records that have the field 'has-preprint':
+To investigate this, I queried the Crossref API for all records that include the field **is-preprint-of**, as well as all records that have the field **has-preprint**:
 
 ```{}
 https://api.crossref.org/works?filter=relation.type:is-preprint-of
@@ -37,7 +37,7 @@ For each record, I collected information about the DOI, publisher, type, date cr
 
 All code and data are available from this GitHub repo: [crossref_preprints_publications](https://github.com/bmkramer/crossref_preprints_publications).
 
-## Results
+## Links between preprints and published versions
 On February 25 2020, there were **80,769** records in Crossref that *were* a preprint of another record, and **70,583** records that *had* a preprint version in Crossref. Of these records, **68,622** had reciprocal links, meaning that the relation was part of the metadata of both the preprint and the published version.  
 
 After retrieving metadata for the records that were only mentioned as being a preprint to a published article or vice versa, but did not themselve mention the relation, **80,914** matches were made with complete metadata for both preprint and published article (Fig. 2). 
@@ -45,3 +45,5 @@ After retrieving metadata for the records that were only mentioned as being a pr
 A small number of DOIs mentioned as preprint (**158**) or as having a preprint (**1658**) could not be retrieved from Crossref. This was mostly due to DOIs not resolving or not being Crossref DOIs (e.g. DataCite DOIs for Zenodo, ResearchGate or OSF (files and projects outside preprint servers)).
 
 ![Fig 2 Flow diagram: links between preprints (blue) and published versions (orange) in Crossref (80,914 matches) ](https://github.com/bmkramer/crossref_preprints_publications/raw/master/img/sankey1.png "Crossref: preprints and published versions")
+
+## Which preprint archives? Which publishers? 
