@@ -228,14 +228,21 @@ list_sel <- selectNodes(list_freq, list_freq_values)
 #replace node names ('other' below cut-off)
 links_sel <- replaceNodes(links, list_sel)
 
+
+#recalculate links values
+links2 <- createNewLinks(links_sel)
+#get nodes frequency
+list2_freq <- getNodesFrequency(links_2)
+
+
 #--------------------------------------------------
 #include intermediate steps to relabel nodes
 #abbreviate overly long names
 #label source and target separately by adding n
 
 #inspect frequencies for source & target
-#source_sel_freq <- list_sel_freq[[1]]
-#target_sel_freq <- list_sel_freq[[2]]
+source2_freq <- list2_freq[[1]]
+target2_freq <- list2_freq[[2]]
 
 #define new node names (abbreviated, specific for source and target)
 source_names <- c("Cold Spring Harbor Lab.",
