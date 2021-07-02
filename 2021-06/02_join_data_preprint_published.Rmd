@@ -1,0 +1,168 @@
+---
+title: "Preprints - published articles - reciprocal links 20210622"
+output: github_document
+---
+
+
+# Load required packages 
+
+```{r message = FALSE, warning = FALSE}
+
+library(lubridate)
+library(rcrossref)
+library(tidyverse)
+library(ggalluvial)
+```
+
+
+# Read files
+
+```{r}
+
+df_is_preprint_of <- read_csv("data/cr_is_preprint_of_20210622.csv",
+                              col_types = 
+                                cols(asserted_by_object = col_character(),
+                                     asserted_by_subject = col_character())
+                              )
+df_has_preprint <- read_csv("data/cr_has_preprint_20210622.csv",
+                            col_types = 
+                                cols(asserted_by_object = col_character(),
+                                     asserted_by_subject = col_character())
+                              )  
+  
+```
+
+
+#modify dataframes
+
+
+```{r}
+
+
+#convert relation_DOIs to lowercase (for good matching later on)
+df_is_preprint_of <- df_is_preprint_of %>%
+  mutate(relation_DOI = tolower(relation_DOI))
+  
+df_has_preprint <- df_has_preprint %>%
+  mutate(relation_DOI = tolower(relation_DOI))
+
+
+
+#convert column names
+#leave out asserted-by columns for now, can always go back to data
+df_is_preprint_of <- df_is_preprint_of %>%
+  rename(is_preprint_DOI = id,
+         preprint_publisher = publisher,
+         preprint_type = type,
+         preprint_created = created,
+         preprint_created_year = created_year,
+         preprint_relation_type = relation_type,
+         published_DOI = relation_DOI)
+
+
+df_has_preprint <- df_has_preprint %>%
+  rename(published_DOI = id,
+         published_publisher = publisher,
+         published_type = type,
+         published_created = created,
+         published_created_year = created_year,
+         published_relation_type = relation_type,
+         has_preprint_DOI = relation_DOI)
+
+
+#consolidate asseerted by columns
+
+df_is_preprint_of <- df_is_preprint_of %>%
+  mutate(is_preprint_assertion = case_when(
+    !is.na(asserted_by_subject) & is.na(asserted_by_object) ~ "subject",
+    is.na(asserted_by_subject) & !is.na(asserted_by_object) ~ "object",
+    !is.na(asserted_by_subject) & !is.na(asserted_by_object) ~ "both",
+    TRUE ~ NA_character_)) %>%
+  select(-c(asserted_by_subject, asserted_by_object))
+
+df_has_preprint <- df_has_preprint %>%
+  mutate(has_preprint_assertion = case_when(
+    !is.na(asserted_by_subject) & is.na(asserted_by_object) ~ "subject",
+    is.na(asserted_by_subject) & !is.na(asserted_by_object) ~ "object",
+    !is.na(asserted_by_subject) & !is.na(asserted_by_object) ~ "both",
+    TRUE ~ NA_character_)) %>%
+  select(-c(asserted_by_subject, asserted_by_object))
+
+
+```
+
+#join tables together
+
+```{r}
+
+
+#join dataframes 
+data_full_join <- full_join(df_is_preprint_of,
+                              df_has_preprint,
+                              by = "published_DOI")
+# n=134036
+
+
+#add column to mark reciprocity
+data_full_join <- data_full_join %>%
+  mutate(reciprocal = case_when(
+    (!is.na(preprint_relation_type) & !is.na(published_relation_type)) ~ "reciprocal",
+    TRUE ~ NA_character_))
+
+#check reciprocal: n= 43221
+
+
+```
+
+#INTERMEZZO: check different preprint DOIs in joined records
+
+```{r}
+
+check <- data_full_join %>%
+  filter(reciprocal == "reciprocal") %>%
+  select(is_preprint_DOI, has_preprint_DOI) %>%
+  filter(is_preprint_DOI != has_preprint_DOI)
+#n = 668
+
+#remove version duplicated using 'safe' version number removal
+
+check2 <- check %>%
+    mutate(
+    is_preprint_DOI = str_remove(is_preprint_DOI, "[\\.\\/\\-]v[0-9]{1,3}$"),
+    has_preprint_DOI = str_remove(has_preprint_DOI, "[\\.\\/\\-]v[0-9]{1,3}$")
+    ) %>%
+   filter(is_preprint_DOI != has_preprint_DOI)
+# n= 483 remaining 
+
+#manual check:
+#actual duplicates (JMIR, PeerJ, Essor, + 1 with full URL) n=335, remaining n=148
+#of these, both from same preprint server (OSF (incl different archives), bioRxiv, JMIR) n= 127
+# n=21 where preprints are from different preprint servers/providers
+# Ignore for now
+
+```
+
+# Finalize dataframe
+
+```{r}
+
+#move has_preprint_DOI to is_preprint_DOI 
+#for records with only has_preprint relation
+data_full_join <- data_full_join %>%
+  mutate(is_preprint_DOI = case_when(
+    !is.na(is_preprint_DOI) ~ is_preprint_DOI,
+    is.na(is_preprint_DOI) ~ has_preprint_DOI))
+
+#remove has_preprint_DOI, reorder columns
+data_full_join <- data_full_join %>%
+  select(-has_preprint_DOI) %>%
+  select(1:5,7,9:12,6,13,8,14,15)
+
+write_csv(data_full_join, "outputs/preprint_published_full.csv")
+
+pp_full <- read_csv("outputs/preprint_published_full.csv")
+
+
+
+```
+

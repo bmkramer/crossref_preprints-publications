@@ -1,0 +1,190 @@
+---
+title: "Preprints - published articles - reciprocal links 20210622"
+output: github_document
+---
+
+
+# Load required packages 
+
+```{r message = FALSE, warning = FALSE}
+
+library(lubridate)
+library(rcrossref)
+library(tidyverse)
+library(ggalluvial)
+```
+
+
+# Read files
+
+```{r}
+
+pp_complete <- read_csv("outputs/preprint_published_full_completed.csv")
+# n=129894
+
+```
+
+# Harmonize publisher names
+
+
+```{r}
+
+pp_preprint_publishers <- pp_complete %>%
+  count(preprint_publisher) %>%
+  arrange(desc(n))
+
+pp_published_publishers <- pp_complete %>%
+  count(published_publisher) %>%
+  arrange(desc(n))
+
+```
+
+#Visualizations
+
+```{r message = FALSE, warning = FALSE}
+# Theme options
+theme_set(theme_minimal() +
+            theme(text = element_text(size = 10),
+                  axis.title.x = element_text(size = 10,
+                                              margin = margin(5, 0, 5, 0)),
+                  axis.text.x = element_text(size = 8),
+                  axis.title.y = element_text(size = 10,
+                                              margin = margin(0, 5, 0, 5)),
+                  axis.text.y = element_text(size = 8),
+                  plot.title = element_text(size = 10),
+                  panel.border = element_rect(color = "#E0E0E0", 
+                                              size = 0.5, 
+                                              fill = NA),
+                  plot.margin = margin(5,5,5,5),
+                  legend.key.size = unit(0.5, "cm"),
+                  legend.text = element_text(size = 8)))
+
+# Create color palette
+pal_1 <- colorspace::lighten(pals::tol(n = 10), amount = 0.2)
+pal_2 <- colorspace::lighten(pals::tol(n = 10), amount = 0.4)
+palette <- c(pal_1, pal_2)
+
+#palette for alluvial plot
+pal_3 <- pals::tol(n=10)
+
+```
+
+
+#Harmonize publisher names
+
+```{r}
+
+#replace publisher names 
+#cutoff for inclusion: preprint n=1000, published n=1000
+#add space behind target names (eg "JMIR " and "other ") to distinguish from source names
+#this is a lazy shortcut to enable ordering of levels in plot
+pp_complete_names  <- pp_complete %>%
+  mutate(preprint_publisher = case_when(
+    preprint_publisher == "Cold Spring Harbor Laboratory" ~ "CSHL",
+    preprint_publisher == "Copernicus GmbH" ~ "Copernicus",
+    preprint_publisher == "Research Square" ~ "ResearchSquare",
+    preprint_publisher == "Research Square Platform LLC" ~ "ResearchSquare",
+    preprint_publisher == "MDPI AG" ~ "MDPI",
+    preprint_publisher == "JMIR Publications Inc." ~ "JMIR",
+    preprint_publisher == "Center for Open Science" ~ "OSF",
+    preprint_publisher == "American Chemical Society (ACS)" ~ "ACS",
+    preprint_publisher == "PeerJ" ~ "PeerJ",
+    preprint_publisher == "Wiley" ~ "Wiley",
+    TRUE ~ "other")) %>%
+  mutate(published_publisher = case_when(
+    published_publisher == "Copernicus GmbH" ~ "Copernicus ",
+    published_publisher == "Springer Science and Business Media LLC" ~ "Springer Nature ",
+    published_publisher == "MDPI AG" ~ "MDPI ",
+    published_publisher == "Elsevier BV" ~ "Elsevier ",
+    published_publisher == "JMIR Publications Inc." ~ "JMIR ",
+    #published_publisher == "Public Library of Science (PLoS)" ~ "PLOS ",
+    #published_publisher == "Oxford University Press (OUP)" ~ "OUP ",
+    published_publisher == "Wiley" ~ "Wiley ",
+    #published_publisher == "eLife Sciences Publications, Ltd" ~ "eLife ",
+    #published_publisher == "Frontiers Media SA" ~ "Frontiers ",
+    #published_publisher == "American Society for Microbiology" ~ "ASM ",
+    published_publisher == "American Chemical Society (ACS)" ~ "ACS ",
+    published_publisher == "PeerJ" ~ "PeerJ ",
+    #published_publisher == "Proceedings of the National Academy of Sciences" ~ "PNAS ",
+    #published_publisher == "Informa UK Limited" ~ "T&F ",
+    TRUE ~ "other "))
+    
+```
+
+
+```{r}
+
+#create vectors for server/publisher names, manually ordered for use in graphs. NB Take care to use "JMIR " and "other " in destination_levels
+
+origin_levels <- c("Copernicus",
+                   "MDPI",
+                   "JMIR",
+                   "ACS",
+                   "PeerJ",
+                   "Wiley",
+                   "ResearchSquare",
+                   "CSHL",
+                   "OSF",
+                   "other")
+
+destination_levels <- c("Copernicus ",
+                        "MDPI ",
+                        "JMIR ",
+                        "ACS ",
+                        "PeerJ ",
+                        "Wiley ",
+                        "Springer Nature ",
+                        "Elsevier ",
+                        #"OUP",
+                        #"PLOS ",
+                        #"eLife ",
+                        #"Frontiers ",
+                        #"ASM ",
+                        #"PNAS ",
+                        #"T&F ",
+                        "other ")
+
+```
+
+
+```{r message = FALSE, warning = FALSE, include = FALSE}
+
+#create alluvial diagram
+
+p_alluvial <- pp_complete_names %>%
+  #filter(!is.na(preprint_relation_type)) %>% #comment in/out
+  #filter(!is.na(published_relation_type)) %>% #comment in/out
+  mutate(origin = factor(preprint_publisher, levels = origin_levels),
+         destination = factor(published_publisher, levels = destination_levels)) %>%
+  group_by(origin, destination) %>%
+  summarize(freq = n()) %>%
+  ungroup() %>%
+  filter(freq >= 10) %>%
+  ggplot(aes(axis1 = origin, 
+             axis2 = destination, 
+             y = freq)) +
+  scale_x_discrete(limits = c("Preprint server", "Publisher"), 
+                   expand = c(0, 0),
+                   position = "top") +
+  scale_y_continuous(expand = c(0, 0)) +
+  #labs(title = paste0("Destination of preprints with links to published papers (n=",nrow(covid_preprints_destination),")")) +
+  geom_alluvium(aes(fill = origin), reverse = TRUE) +
+  geom_stratum(reverse = TRUE, color = "grey50") + 
+  geom_text(aes(label = after_stat(stratum)), size = 8, 
+            stat = "stratum", 
+            reverse = TRUE, color = "grey25") +
+  guides(fill = FALSE) +
+  theme(plot.title = element_text(size = 20),
+        axis.text.x = element_text(size = 24, face = "bold"),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  scale_fill_manual(values = pal_3) +
+  ggsave("outputs/figures/alluvial.png", width = 12, height = 18)
+
+
+#NB Alternative (non-lazy) approach to accommodate identical levels in origin and destination: transform data into long format and set one level vector
+#see https://stackoverflow.com/questions/48346546/ggalluvial-ordering-stratum (this also uses geom_flow instead of geom_alluvium)
+```

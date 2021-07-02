@@ -1,0 +1,184 @@
+---
+title: "Preprints - published articles - reciprocal links 20210622"
+output: github_document
+---
+
+
+# Load required packages 
+
+```{r message = FALSE, warning = FALSE}
+
+library(lubridate)
+library(rcrossref)
+library(tidyverse)
+library(ggalluvial)
+```
+
+
+# Read files
+
+```{r}
+
+pp_full <- read_csv("outputs/preprint_published_full.csv")
+
+```
+
+#Query Crossref API for incomplete records (= non-reciprocal records)
+
+```{r}
+
+#define function query API for missing data
+#can use high-level API (cr_works) that gives dataframe result (b/c no relation info requested)
+
+getCrossrefData <- function(dois){
+  cr_result <- cr_works(dois = dois,
+                        #select does not work in combination with dois =
+                        #select = c('DOI', 'publisher', 'type', 'created'),
+                        .progress = "time")
+  
+  cr_result <- cr_result$data %>%
+    select(doi, publisher, type, created) %>%
+    mutate(created = as.Date(created),
+           created_year = lubridate::year(created))
+  
+  return(cr_result)
+  
+}
+
+
+dois_is_preprint <- pp_full %>%
+  filter(is.na(reciprocal)) %>%
+  filter(is.na(preprint_relation_type)) %>%
+  pull(is_preprint_DOI) %>%
+  unique()
+#n=16523
+
+dois_published <- pp_full %>%
+  filter(is.na(reciprocal)) %>%
+  filter(is.na(published_relation_type)) %>%
+  pull(published_DOI) %>%
+  unique()
+#n=74223
+
+#can also run in batches
+missing_preprints <- getCrossrefData(dois_is_preprint)
+missing_published <- getCrossrefData(dois_published)
+
+write_csv(missing_preprints, "data/missing_preprints.csv")
+write_csv(missing_published, "data/missing_published.csv")
+
+missing_preprints <- read_csv("data/missing_preprints.csv")
+missing_published <- read_csv("data/missing_published.csv")
+
+
+
+```
+
+#Join missing results into main df
+
+```{r}
+
+
+#all dois to lowercase 
+missing_preprints <- missing_preprints %>%
+  mutate(doi = str_to_lower(str_squish(doi)))
+
+missing_published <- missing_published %>%
+  mutate(doi = str_to_lower(str_squish(doi)))
+
+pp_full <- pp_full %>%
+  mutate(is_preprint_DOI = str_to_lower(str_squish(is_preprint_DOI)),
+         published_DOI = str_to_lower(str_squish(published_DOI)))
+
+#split into separate chuncks for joining         
+
+
+pp_full_reciprocal <- pp_full %>%
+  filter(!is.na(reciprocal))
+
+pp_misssing_preprint <- pp_full %>%
+  filter(is.na(reciprocal)) %>%
+  filter(is.na(preprint_relation_type))
+
+pp_missing_published <- pp_full %>%
+  filter(is.na(reciprocal)) %>%
+  filter(is.na(published_relation_type))
+
+#join dfs
+
+pp_join_preprint <- pp_misssing_preprint %>%
+  left_join(missing_preprints, by = c("is_preprint_DOI" = "doi")) %>%
+  mutate(preprint_publisher = publisher,
+         preprint_type = type,
+         preprint_created = created,
+         preprint_created_year = created_year) %>%
+  select(-c(publisher, type, created,created_year)) %>%
+  distinct()
+  
+# 372 of 16587 of type journal-article, mostly from Copernicus, SkepticMed and Millennium Journals - the latter two with identical doi-pairs
+# notably, no occasions of Elsevier linking to SSRN! 
+
+# unmatched (check before filtering): 2x arxiv, 1x HAL, 1x test, 2x NA
+# notably, no ResearchGate or other DataCite archives
+
+pp_join_published <- pp_missing_published %>%
+  left_join(missing_published, by = c("published_DOI" = "doi")) %>%
+  mutate(published_publisher = publisher,
+         published_type = type,
+         published_created = created,
+         published_created_year = created_year) %>%
+  select(-c(publisher, type, created,created_year)) %>%
+  distinct()
+
+# 2107 unmatched published dois
+# manual inspection (see data/missing_published_unmatched.csv)
+# 1800 DataCite (1130 OSF, 496 Zenodo, 107 RG, 17 Figshare, 50 others)
+# 36 other doi-registrars (mEDRA, KISTI, CNKI, Airiti, JaLC)
+# 223 resource not found/invalid doi (with Crossref as agency)
+# 48 invalid format (incl full hyperlinks)
+
+
+# of 1836 other doi-registrars, 1798 were linked from OSF preprints
+# remainder: MDPI (19), CSHL (13), ACS (4), ResearchSquare (1), Sage (1)
+
+# of matched dois: 1601 not journal article
+# 1003 posted content
+# 225 book chapter
+# 213 proceedings article 
+# 41 report
+# 39 book
+# rest others
+
+# of publication type "posted-content", 968 (of 1003) from OSF preprints
+# of other publication types except posted-content, 463 (of 598) from OSF preprints
+
+```
+
+#Create final dataset of preprints-published links
+#limit to posted-content <-> journal-articles, but see analysis above
+
+```{r}
+
+pp_join_preprint <- pp_join_preprint %>%
+  filter(preprint_type == "posted-content")
+# n=16153 of 16587
+
+pp_join_published <- pp_join_published %>%
+  filter(published_type == "journal-article")
+# n= 70520 of 74228
+
+
+pp_full_completed <- bind_rows(pp_full_reciprocal,
+                               pp_join_preprint,
+                               pp_join_published)
+# n=129894
+
+
+write_csv(pp_full_completed, "outputs/preprint_published_full_completed.csv")
+pp_full_completed <- read_csv("outputs/preprint_published_full_completed.csv")
+
+
+```
+
+
+

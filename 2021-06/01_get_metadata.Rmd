@@ -1,0 +1,244 @@
+---
+title: "Preprints - published articles - reciprocal links 20210622"
+output: github_document
+---
+
+
+# Load required packages 
+
+```{r message = FALSE, warning = FALSE}
+
+library(lubridate)
+library(rcrossref)
+library(tidyverse)
+library(ggalluvial)
+```
+
+# Set sample date 
+
+```{r}
+
+sample_date <- Sys.Date()
+
+sample_date <- as.Date("2021-06-22")
+
+#NB use dates in character format for API queries
+
+```
+
+
+# Get preprint metadata via Crossref 
+# for publications (all publication types) with relation is-preprint-of
+
+'low level' `cr_works_` function is used to return all metadata in list format, as this also includes the field 'relation' that is not returned by the 'high level' `cr_works` function.
+
+```{r message = FALSE, warning = FALSE, cache = TRUE}
+
+
+cr_expected_results <- cr_works(limit = 1,
+                                filter = c(relation_type = "is-preprint-of")
+                                )$meta$total_results
+
+# Query has-preprint
+cr_is_preprint_of <- cr_works_(filter = c(relation_type = "is-preprint-of"),
+                               limit = 1000, 
+                               cursor = "*",
+                               parse = TRUE,
+                               cursor_max = 1000000,
+                               .progress = TRUE)
+
+cr_returned_results <- map_dbl(cr_has_preprint, ~ length(.x$message$items)) %>% sum()
+
+
+```
+
+
+# Get published article metadata via Crossref 
+# for publications (all publication types) with relation has-preprint
+
+'low level' `cr_works_` function is used to return all metadata in list format, as this also includes the field 'relation' that is not returned by the 'high level' `cr_works` function.
+
+```{r message = FALSE, warning = FALSE, cache = TRUE}
+
+
+cr_expected_results <- cr_works(limit = 1,
+                                filter = c(relation_type = "has-preprint")
+                                )$meta$total_results
+
+# Query has-preprint
+cr_has_preprint <- cr_works_(filter = c(relation_type = "has-preprint"),
+                               limit = 1000, 
+                               cursor = "*",
+                               parse = TRUE,
+                               cursor_max = 1000000,
+                               .progress = TRUE)
+
+cr_returned_results <- map_dbl(cr_has_preprint, ~ length(.x$message$items)) %>% sum()
+
+
+```
+
+# TEMP store as RDS
+
+```{r}
+
+saveRDS(cr_is_preprint_of, "data/cr_is_preprint_of.RDS")
+saveRDS(cr_has_preprint, "data/cr_has_preprint.RDS")
+
+cr_is_preprint_of <- readRDS("data/cr_is_preprint_of.RDS")
+cr_has_preprint <- readRDS("data/cr_has_preprint.RDS")
+
+```
+
+
+# Extract relevant data, convert into dataframe
+
+
+```{r message = FALSE, warning = FALSE, cache = TRUE}
+
+#define function to flatten lists
+
+extractList <- function(x){
+  res <- x %>%
+  map("message") %>%
+  map("items") %>%
+  purrr::flatten()
+}
+
+
+#define function to extract data
+extractData <- function(x, var){
+  res <- tibble(
+    id = map_chr(x, "DOI"),
+    publisher = map_chr(x, "publisher", .default = NA_character_),
+    type = map_chr(x, "type", .default = NA_character_),
+    created = map(x, "created", .null = NULL),
+    relation = map(x, "relation", .null = NULL)) %>%
+    mutate(
+      created = map_chr(created, "date-time", .null = NULL)) %>%
+    mutate(created = as.Date(created),
+           created_year = lubridate::year(created)) %>%
+    mutate(
+        relation_type = var,
+        relation = map(relation, var)) %>%
+    unnest(relation) %>%
+    mutate(
+      relation_DOI = map_chr(relation, "id"),
+      assertion = map_chr(relation, "asserted-by")) %>%
+    select(-relation) %>%
+    #remove duplicated to prevent issues with pivot_wider creating list column
+    distinct() %>%
+    #spread column with assertion to not have DOIs listed twice
+    mutate(assertion2 = assertion) %>%
+    pivot_wider(names_from = assertion, values_from = assertion2) %>%
+    rename(asserted_by_object = object,
+           asserted_by_subject = subject)
+}
+  
+#extract data
+df_is_preprint_of <- cr_is_preprint_of %>%
+  extractList() %>%
+  extractData("is-preprint-of") %>%
+  distinct()
+# n=140292
+
+df_has_preprint <- cr_has_preprint %>%
+  extractList() %>%
+  extractData("has-preprint") %>%
+  distinct()
+# n=62142
+
+```
+
+
+```{r}
+
+
+#Instead of deduplicating preprint versions, deduplicate published articles
+#:-)
+#potential loss of cases where multiple preprints (other than versions) link to same published article, or where published article has multiple links to preprints (other than versions). Take this for granted for now.
+
+df_is_preprint_of <- df_is_preprint_of %>%
+  group_by(relation_DOI) %>%
+  arrange(created) %>%
+  slice(1) %>%
+  ungroup()
+# 117715
+
+df_has_preprint <- df_has_preprint %>%
+  group_by(id) %>%
+  arrange(created) %>%
+  slice(1) %>%
+  ungroup()
+# n=60651
+
+
+#The following step should have been done AFTER storing raw (or intermediate) results, as this gets rid of those cases where other than journal articles link back to preprints. Can query Crossref for this separately
+
+#NB Cases where preprints link forward to other than journal articles will be retrieved later on, b/c they won't be matched in join so has_preprint_DOI will be retrieved separately from Crossref (see comments in 03_get_missing_metadata)
+
+#THIS IS ACTUALLY AN INTERESTING CASE STUDY TO CARRY OUT (see 01_get_metadata_other_pubtypes)
+
+#filter on posted content and published articles, respectively
+df_is_preprint_of <- df_is_preprint_of %>%
+  filter(type == "posted-content")
+# n=117449
+
+df_has_preprint <- df_has_preprint %>%
+  filter(type == "journal-article")
+# n= 59806
+
+#The step above gets rid of those cases where other than journal articles link back to preprints. 
+
+#NB Cases where preprints link forward to other than journal articles will be retrieved later on, b/c they won't be matched in join so has_preprint_DOI will be retrieved separately from Crossref 
+#see comments in 03_get_missing_metadata: 
+# 1003 posted content
+# 225 book chapter
+# 213 proceedings article 
+# 41 report
+# 39 book
+# rest others
+
+
+#check for publication types prior to filtering on journal articles:
+
+df_has_preprint_types <- df_has_preprint %>%
+  count(type) %>%
+  arrange(desc(n))
+
+# journal-article 59806
+# posted-content 586
+# book-chapter 108
+# proceedings-article 106
+# book 14
+# other types < 10
+
+#THIS IS ACTUALLY AN INTERESTING CASE STUDY TO CARRY OUT LATER 
+#(for book chapters and proceedings articles, specifically)
+
+```
+
+
+#write/read results
+
+```{r}
+
+write_csv(df_is_preprint_of, "data/cr_is_preprint_of_20210622.csv")
+write_csv(df_has_preprint, "data/cr_has_preprint_20210622.csv")    
+    
+
+
+df_is_preprint_of <- read_csv("data/cr_is_preprint_of_20210622.csv",
+                              col_types = 
+                                cols(asserted_by_object = col_character(),
+                                     asserted_by_subject = col_character())
+                              )
+df_has_preprint <- read_csv("data/cr_has_preprint_20210622.csv",
+                            col_types = 
+                                cols(asserted_by_object = col_character(),
+                                     asserted_by_subject = col_character())
+                              )  
+  
+
+```
+
